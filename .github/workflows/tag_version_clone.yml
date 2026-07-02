@@ -1,5 +1,5 @@
 
-name: Clone Tagged Version
+name: Clone On Tagged Release
 
 run-name: ${{ github.workflow }} run by ${{ github.actor }}
 

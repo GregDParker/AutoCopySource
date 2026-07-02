@@ -1,4 +1,4 @@
-name: Clone Main
+name: Clone On Main Push
 
 run-name: ${{ github.workflow }} run by ${{ github.actor }}
 
