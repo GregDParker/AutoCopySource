@@ -40,7 +40,7 @@ jobs:
             while IFS= read -r file || [ -n "$file" ]; do
               rm -rf -- "$file" || rm -rf -- "${file%$'\r'}"
             done < .delete_on_copy
-            rm -f destination/.delete_on_copy
+            rm -f .delete_on_copy
           fi
 
           cd ..
