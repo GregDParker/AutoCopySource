@@ -1,0 +1,53 @@
+name: Copy Files
+
+run-name: ${{ github.workflow }} run by ${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          repository: GregDParker/AutoCopySource
+          path: source
+
+      - name: Checkout Destination
+        uses: actions/checkout@v4
+        with:
+          repository: GregDParker/AutoCopyDestination
+          path: destination
+          token: ${{ secrets.DESTINATION_PAT }}
+
+      - name: Copy files from source to destination
+        run: |
+          rsync -av --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            test1/ test2/
+
+      - name: Delete super secret file
+        run: rm -f test2/super_secret.txt
+
+      - name: Commit and push changes
+        run: |
+          cd destination
+
+          git config user.name "Greg Parker"
+          git config user.email "greg.parker@ukhsa.gov.uk"
+
+          git add .
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Sync files from source"
+          git push origin HEAD:main
