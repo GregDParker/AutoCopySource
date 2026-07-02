@@ -1,0 +1,81 @@
+
+name: Copy Files
+
+run-name: ${{ github.workflow }} run by ${{ github.actor }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          repository: GregDParker/AutoCopySource
+          ref: ${{ github.ref }}
+          path: source
+
+      - name: Checkout Destination
+        uses: actions/checkout@v4
+        with:
+          repository: GregDParker/AutoCopyDestination
+          path: destination
+          token: ${{ secrets.DESTINATION_PAT }}
+
+      - name: Copy files from source to destination
+        run: |
+          rsync -av --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            source/ destination/
+
+      - name: Delete files listed in .delete_on_copy
+        run: |
+          cd destination
+
+          if [ -f .delete_on_copy ]; then
+            while IFS= read -r file || [ -n "$file" ]; do
+              rm -rf -- "$file" || rm -rf -- "${file%$'\r'}"
+            done < .delete_on_copy
+            rm -f destination/.delete_on_copy
+          fi
+
+          cd ..
+
+      - name: Commit, push and tag
+        run: |
+          cd destination
+
+          git config user.name "Greg Parker"
+          git config user.email "greg.parker@ukhsa.gov.uk"
+
+          git add .
+
+          if ! git diff --staged --quiet; then
+            git commit -m "Sync files from source ${GITHUB_REF_NAME}"
+            git push origin HEAD:main
+          else
+            echo "No changes to commit"
+          fi
+
+          TAG_NAME="${GITHUB_REF_NAME}"
+
+          # Fetch existing tags
+          git fetch --tags
+
+          # Delete any existing local tag
+          git tag -d "$TAG_NAME" 2>/dev/null || true
+
+          # Delete any existing remote tag
+          git push origin ":refs/tags/$TAG_NAME" 2>/dev/null || true
+
+          # Create tag on current HEAD
+          git tag "$TAG_NAME"
+
+          # Force push tag
+          git push --force origin "$TAG_NAME"

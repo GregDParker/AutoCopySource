@@ -35,13 +35,15 @@ jobs:
       - name: Delete files listed in .delete_on_copy
         run: |
           cd destination
-          while IFS= read -r file || [ -n "$file" ]; do
-              rm -r -- "$file" || rm -r -- "${file%$'\r'}"
-          done < .delete_on_copy;
-          cd ..
 
-      - name: Delete .delete_on_copy
-        run: rm -f destination/.delete_on_copy
+          if [ -f .delete_on_copy ]; then
+            while IFS= read -r file || [ -n "$file" ]; do
+              rm -rf -- "$file" || rm -rf -- "${file%$'\r'}"
+            done < .delete_on_copy
+            rm -f destination/.delete_on_copy
+          fi
+
+          cd ..
 
       - name: Commit and push changes
         run: |
