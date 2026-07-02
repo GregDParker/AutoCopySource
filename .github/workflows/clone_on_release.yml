@@ -1,0 +1,80 @@
+
+name: Clone On Tagged Release
+
+run-name: ${{ github.workflow }} run by ${{ github.actor }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v7
+        with:
+          repository: GregDParker/AutoCopySource
+          ref: ${{ github.ref }}
+          path: source
+
+      - name: Checkout Destination
+        uses: actions/checkout@v7
+        with:
+          repository: GregDParker/AutoCopyDestination
+          path: destination
+          token: ${{ secrets.DESTINATION_PAT }}
+
+      - name: Copy files from source to destination
+        run: |
+          rsync -av --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            source/ destination/
+
+      - name: Delete files listed in .delete_on_copy
+        run: |
+          cd destination
+
+          if [ -f .delete_on_copy ]; then
+            while IFS= read -r file || [ -n "$file" ]; do
+              rm -r -- "$file" || rm -r -- "${file%$'\r'}"
+            done < .delete_on_copy
+            rm -f .delete_on_copy
+          fi
+
+          cd ..
+
+      - name: Commit, push and tag
+        run: |
+          cd destination
+
+          git config user.name "Greg Parker"
+          git config user.email "greg.parker@ukhsa.gov.uk"
+
+          git add .
+
+          if ! git diff --staged --quiet; then
+            git commit -m "Sync files from source ${GITHUB_REF_NAME}"
+            git push origin HEAD:main
+          else
+            echo "No changes to commit"
+          fi
+
+          TAG_NAME="${GITHUB_REF_NAME}"
+
+          # Fetch existing tags
+          git fetch --tags
+
+          # Only delete destination tags when they conflict with incoming source tag
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+            git tag -d "$TAG_NAME" 2>/dev/null || true
+            git push origin ":refs/tags/$TAG_NAME"
+          fi
+
+          # Create tag on current HEAD
+          git tag "$TAG_NAME"
+
+          git push origin "$TAG_NAME"
