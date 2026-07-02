@@ -30,10 +30,18 @@ jobs:
           rsync -av --delete \
             --exclude '.git/' \
             --exclude '.github/' \
-            test1/ test2/
+            source/ destination/
 
-      - name: Delete super secret file
-        run: rm -f test2/super_secret.txt
+      - name: Delete files listed in .delete_on_copy
+        run: |
+          cd destination
+          while IFS= read -r file || [ -n "$file" ]; do
+              rm -r -- "$file" || rm -r -- "${file%$'\r'}"
+          done < .delete_on_copy;
+          cd ..
+
+      - name: Delete .delete_on_copy
+        run: rm -f destination/.delete_on_copy
 
       - name: Commit and push changes
         run: |
