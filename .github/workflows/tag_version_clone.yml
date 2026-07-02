@@ -1,5 +1,5 @@
 
-name: Copy Files
+name: Clone Tagged Version
 
 run-name: ${{ github.workflow }} run by ${{ github.actor }}
 

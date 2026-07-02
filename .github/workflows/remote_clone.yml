@@ -1,4 +1,4 @@
-name: Copy Files
+name: Clone Main
 
 run-name: ${{ github.workflow }} run by ${{ github.actor }}
 
